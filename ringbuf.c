@@ -1,9 +1,5 @@
-
-
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
-
 
 #define BUFFER_SIZE 8
 
@@ -11,7 +7,7 @@
 #define RB_OK    0
 #define RB_FAIL -1
 
-/* Ring Buffer */
+/* Ring Buffer Structure */
 typedef struct
 {
     uint8_t data[BUFFER_SIZE];
@@ -29,25 +25,29 @@ void rb_init(RingBuffer *rb)
     rb->tail = 0;
     rb->count = 0;
 
-    memset(rb->data, 0, sizeof(rb->data));
+    /* Clear buffer manually */
+    for (int i = 0; i < BUFFER_SIZE; i++)
+    {
+        rb->data[i] = 0;
+    }
 }
 
 
-/* Check the buffer is  full */
+/* Check if buffer is full */
 int rb_is_full(RingBuffer *rb)
 {
     return (rb->count == BUFFER_SIZE);
 }
 
 
-/* Check the buffer is empty */
+/* Check if buffer is empty */
 int rb_is_empty(RingBuffer *rb)
 {
     return (rb->count == 0);
 }
 
 
-/* Return  the current buffer count */
+/* Return current buffer count */
 uint8_t rb_count(RingBuffer *rb)
 {
     return rb->count;
@@ -55,7 +55,8 @@ uint8_t rb_count(RingBuffer *rb)
 
 
 /*
- * Write one byte into buffer its return
+ * Write one byte into buffer
+ * Return:
  * RB_OK   -> success
  * RB_FAIL -> buffer full
  */
@@ -68,6 +69,9 @@ int rb_write(RingBuffer *rb, uint8_t byte)
 
     rb->data[rb->head] = byte;
 
+    /*
+     * Works only because BUFFER_SIZE is power of 2.
+     */
     rb->head = (rb->head + 1) & (BUFFER_SIZE - 1);
 
     rb->count++;
@@ -76,7 +80,11 @@ int rb_write(RingBuffer *rb, uint8_t byte)
 }
 
 
-
+/*
+ * Read one byte from buffer Return:
+ * RB_OK   -> success
+ * RB_FAIL -> buffer empty
+ */
 int rb_read(RingBuffer *rb, uint8_t *out_byte)
 {
     if (rb_is_empty(rb))
@@ -86,7 +94,6 @@ int rb_read(RingBuffer *rb, uint8_t *out_byte)
 
     *out_byte = rb->data[rb->tail];
 
-    /* Circular wrap-around using bitwise AND */
     rb->tail = (rb->tail + 1) & (BUFFER_SIZE - 1);
 
     rb->count--;
@@ -105,7 +112,6 @@ int main(void)
 
     rb_init(&rb);
 
-   
     printf("Writing 8 bytes\n\n");
 
     uint8_t write_data[] =
@@ -120,6 +126,7 @@ int main(void)
         0x48
     };
 
+    /* Write 8 bytes */
     for (int i = 0; i < BUFFER_SIZE; i++)
     {
         result = rb_write(&rb, write_data[i]);
@@ -142,6 +149,7 @@ int main(void)
     printf("\n");
 
 
+    /*Try to writing when full */
     printf("Writing when buffer is FULL\n\n");
 
     result = rb_write(&rb, 0x99);
@@ -154,6 +162,7 @@ int main(void)
     printf("\n");
 
 
+    /*Read the first 3 bytes */
     printf("Reading first 3 bytes\n\n");
 
     for (int i = 0; i < 3; i++)
@@ -171,8 +180,8 @@ int main(void)
     printf("\n");
 
 
-   
-    printf(" Writing 3 more bytes\n\n");
+    /*Write 3 more bytes */
+    printf("Writing 3 more bytes\n\n");
 
     uint8_t new_data[] =
     {
@@ -203,7 +212,7 @@ int main(void)
     printf("\n");
 
 
-   
+    /*Read remaining bytes */
     printf("Reading remaining bytes\n\n");
 
     while (!rb_is_empty(&rb))
@@ -228,6 +237,7 @@ int main(void)
     printf("\n");
 
 
+    /*Read when empty */
     printf("Reading when buffer is EMPTY\n\n");
 
     result = rb_read(&rb, &byte_read);
@@ -236,7 +246,6 @@ int main(void)
     {
         printf("[READ ] FAIL (buffer empty)\n");
     }
-
 
     return 0;
 }
